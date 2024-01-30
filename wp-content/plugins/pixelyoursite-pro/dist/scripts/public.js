@@ -80,7 +80,6 @@ if (!String.prototype.trim) {
     }
     var firstVisit = false;
 
-    var isTrackEventForGA = [];
 
     var dummyPinterest = function () {
 
@@ -202,7 +201,13 @@ if (!String.prototype.trim) {
 
         let isNewSession = checkSession();
 
-
+        if(isNewSession){
+            let duration = options.last_visit_duration * 60000
+            var now = new Date();
+            now.setTime(now.getTime() + duration);
+            Cookies.set('pys_session_limit', true,{ expires: now })
+            Cookies.set('pys_start_session', true)
+        }
         function loadPixels() {
 
             if (!options.gdpr.all_disabled_by_api) {
@@ -729,13 +734,10 @@ if (!String.prototype.trim) {
             if(options.visit_data_model === "last_visit") {
                 name = "last_pys_landing_page"
             }
-            if(Cookies.get(name) && Cookies.get(name) !== "undefined") {
-                return Cookies.get(name);
-            }
-            else if(options.hasOwnProperty("tracking_analytics") && options.tracking_analytics.TrafficLanding){
-                return options.tracking_analytics.TrafficLanding;
-            } else{
+            if(Cookies.get(name) === 'undefined') {
                 return "";
+            } else {
+                return Cookies.get(name);
             }
         }
         function getTrafficSourceValue() {
@@ -743,13 +745,10 @@ if (!String.prototype.trim) {
             if(options.visit_data_model === "last_visit") {
                 name = "last_pysTrafficSource"
             }
-            if(Cookies.get(name) && Cookies.get(name) !== "undefined") {
-                return Cookies.get(name);
-            }
-            else if(options.hasOwnProperty("tracking_analytics") && options.tracking_analytics.TrafficSource){
-                return options.tracking_analytics.TrafficSource;
-            } else{
+            if(Cookies.get(name) === 'undefined') {
                 return "";
+            } else {
+                return Cookies.get(name);
             }
         }
 
@@ -763,9 +762,6 @@ if (!String.prototype.trim) {
                 $.each(utmId, function (index, name) {
                     if (Cookies.get(cookiePrefix + name)) {
                         terms[name] = Cookies.get(cookiePrefix + name)
-                    }
-                    else if(options.hasOwnProperty("tracking_analytics") && options.tracking_analytics.TrafficUtmsId[name]) {
-                        terms[name] = filterEmails(options.tracking_analytics.TrafficUtmsId[name])
                     }
                 });
                 return terms;
@@ -789,9 +785,6 @@ if (!String.prototype.trim) {
                     if (Cookies.get(cookiePrefix + name)) {
                         let value = Cookies.get(cookiePrefix + name);
                         terms[name] = filterEmails(value); // do not allow email in request params (Issue #70)
-                    }
-                    else if(options.hasOwnProperty("tracking_analytics") && options.tracking_analytics.TrafficUtms[name]) {
-                        terms[name] = filterEmails(options.tracking_analytics.TrafficUtms[name])
                     }
                 });
 
@@ -1069,13 +1062,7 @@ if (!String.prototype.trim) {
             },
 
             manageCookies: function () {
-                if(isNewSession && !options.cookie.disabled_all_cookie && !options.cookie.disabled_start_session_cookie) {
-                    let duration = options.last_visit_duration * 60000
-                    var now = new Date();
-                    now.setTime(now.getTime() + duration);
-                    Cookies.set('pys_session_limit', true,{ expires: now })
-                    Cookies.set('pys_start_session', true)
-                }
+
                 if (options.gdpr.ajax_enabled && !options.gdpr.consent_magic_integration_enabled) {
 
                     // retrieves actual PYS GDPR filters values which allow to avoid cache issues
@@ -2119,10 +2106,10 @@ if (!String.prototype.trim) {
                 });
 
                 var dateTime = getDateTime();
-                var landing = getLandingPageValue();
-                var lastLanding = getLandingPageValue();
-                var trafic = getTrafficSourceValue();
-                var lastTrafic = getTrafficSourceValue();
+                var landing = Cookies.get('pys_landing_page');
+                var lastLanding = Cookies.get('last_pys_landing_page');
+                var trafic = Cookies.get('pysTrafficSource');
+                var lastTrafic = Cookies.get('last_pysTrafficSource');
 
                 var $form = null;
                 if($('body').hasClass('woocommerce-checkout')) {
@@ -2210,7 +2197,7 @@ if (!String.prototype.trim) {
             var params = {};
             Utils.copyProperties(data, params);
 
-            params.event_id = event.event_id;
+            params.eventID = event.eventID;
             if(ids.length > 0){
                 TikTok.fireEventAPI(name, event, params);
             }
@@ -2278,11 +2265,11 @@ if (!String.prototype.trim) {
                         && Object.keys(options.tiktok.advanced_matching).length > 0) {
                         advancedMatching = options.tiktok.advanced_matching;
                         if(!advancedMatching.hasOwnProperty("external_id")){
-                            if (Cookies.get('pbid')) {
-                                advancedMatching["external_id"] = Cookies.get('pbid');
+                            if (Cookies.get('pbid') || (options.hasOwnProperty('pbid') && options.pbid)) {
+                                advancedMatching["external_id"] = Cookies.get('pbid') ? Cookies.get('pbid') : options.pbid;
                             }
                         }
-                        else if(advancedMatching.hasOwnProperty("external_id") && advancedMatching.external_id != Cookies.get('pbid'))
+                        else if(advancedMatching.external_id != Cookies.get('pbid'))
                         {
                             advancedMatching["external_id"] = Cookies.get('pbid') ? Cookies.get('pbid') : advancedMatching.external_id;
                         }
@@ -2353,7 +2340,7 @@ if (!String.prototype.trim) {
                                 ids: ids,
                                 data:params,
                                 url:window.location.href,
-                                event_id:event.event_id,
+                                eventID:event.eventID,
                                 ajax_event:options.ajax_event
                             };
 
@@ -2537,7 +2524,6 @@ if (!String.prototype.trim) {
         if(!isAddToCartFromJs) {
             notCachedEventsIds.push('woo_add_to_cart_on_button_click')
         }
-
         var initialized = false;
         var configuredPixels = new Array();
 
@@ -2563,6 +2549,9 @@ if (!String.prototype.trim) {
 
             if(options.facebook.serverApiEnabled) {
                 if(event.e_id === "woo_remove_from_cart" ) {
+                    Facebook.updateEventId(event.name);
+                    event.eventID = Facebook.getEventId(event.name);
+                } else if(isAddToCartFromJs && event.e_id === "woo_add_to_cart_on_button_click" ) {
                     Facebook.updateEventId(event.name);
                     event.eventID = Facebook.getEventId(event.name);
                 } else if(!notCachedEventsIds.includes(event.e_id)) {
@@ -2802,11 +2791,11 @@ if (!String.prototype.trim) {
                         advancedMatching["ln"] = advancedMatchingForm["last_name"];
                     }
                     if(!advancedMatching.hasOwnProperty("external_id")){
-                        if (Cookies.get('pbid')) {
-                            advancedMatching["external_id"] = Cookies.get('pbid');
+                        if (Cookies.get('pbid') || (options.hasOwnProperty('pbid') && options.pbid)) {
+                            advancedMatching["external_id"] = Cookies.get('pbid') ? Cookies.get('pbid') : options.pbid;
                         }
                     }
-                    else if(advancedMatching.hasOwnProperty("external_id") && advancedMatching.external_id != Cookies.get('pbid'))
+                    else if(advancedMatching.external_id != Cookies.get('pbid'))
                     {
                         advancedMatching["external_id"] = Cookies.get('pbid') ? Cookies.get('pbid') : advancedMatching.external_id;
                     }
@@ -3105,8 +3094,7 @@ if (!String.prototype.trim) {
 
             var eventParams = event.params;
             var data = event.params;
-            var valuesArray = Object.values(event.trackingIds);
-            var ids = valuesArray.filter(function (pixelId) {
+            var ids = event.trackingIds.filter(function (pixelId) {
                 return !Utils.hideMatchingPixel(pixelId, 'ga');
             })
             Utils.copyProperties(Utils.getRequestParams(), eventParams);
@@ -3122,18 +3110,11 @@ if (!String.prototype.trim) {
 
             };
 
-            var copyParams = Utils.copyProperties(eventParams, {}); // copy params because mapParamsTov4 can modify it
-            if(event.hasOwnProperty("unify")){
-                var params = mapParamsToUnifyGA(name,copyParams)
-            }
-            else {
-                var params = mapParamsTov4(ids,name,copyParams)
-            }
-
-            _fireEvent(ids, name, params);
-            isTrackEventForGA.push(name);
-
-
+            ids.forEach(function (tracking_id) {
+                var copyParams = Utils.copyProperties(eventParams, {}); // copy params because mapParamsTov4 can modify it
+                var params = mapParamsTov4(tracking_id,name,copyParams)
+                _fireEvent(tracking_id, name, params);
+            });
 
         }
 
@@ -3154,106 +3135,24 @@ if (!String.prototype.trim) {
 
         }
 
-        function mapParamsToUnifyGA(name,param){
-            switch (name) {
-                case 'OutboundClick':
-                case 'InternalClick': {
-                    let params = {
-                        event_category: "Key Actions",
-                        event_action: name,
-                        non_interaction: param.non_interaction,
-                    }
-                    if(param.hasOwnProperty("target_url")) {
-                        params['event_label'] = param.target_url
-                    }
-                    if(options.trackTrafficSource) {
-                        params['traffic_source'] = param.traffic_source
-                    }
-                    return params;
-                }
-
-                case 'AdSense' :
-                case 'Comment' :
-                case 'login' :
-                case 'sign_up' :
-                case 'EmailClick' :
-                case 'TelClick' : {
-                    let params = {
-                        event_category: "Key Actions",
-                        event_action: name,
-                        non_interaction: param.non_interaction,
-                    }
-                    return params;
-                }
-                case 'Form' : {
-                    let params = {
-                        event_category: "Key Actions",
-                        event_action: name,
-                        non_interaction: param.non_interaction,
-                    }
-                    var formClass = (typeof param.form_class != 'undefined') ? 'class: ' + param.form_class : '';
-                    if(formClass != "") {
-                        params["event_label"] = formClass;
-                    }
-                    return params;
-                }
-                case 'Download' : {
-                    let params = {
-                        event_category: "Key Actions",
-                        event_action: name,
-                        event_label: param.download_name,
-                        non_interaction: param.non_interaction,
-                    }
-                    return params;
-                }
-                case 'TimeOnPage' :
-                case 'PageScroll' : {
-                    let params = {
-                        event_category: "Key Actions",
-                        event_action: name,
-                        event_label: document.title,
-                        non_interaction: param.non_interaction,
-                    }
-                    return params;
-                }
-                case 'search' : {
-                    let params = {
-                        event_category: "Key Actions",
-                        event_action: name,
-                        event_label: param.search_term,
-                        non_interaction: param.non_interaction,
-                    }
-                    return params;
-                }
-            }
-            return param;
-        }
         function mapParamsTov4(tag,name,param) {
             //GA4 automatically collects a number of parameters for all events
-            var hasGA4Tag = false;
             delete param.page_title;
             delete param.event_url;
             delete param.landing_page;
-
             // end
-            if (Array.isArray(tag)) {
-                hasGA4Tag = tag.some(function (element) {
-                    return isv4(element);
-                });
-            } else if(isv4(tag)) {
-                // tag является строкой и соответствует GA4
-                hasGA4Tag = true;
-            }
-            if(hasGA4Tag) {
+            if(isv4(tag)) {
                 delete param.traffic_source;
                 delete param.event_category;
                 delete param.event_label;
                 delete param.ecomm_prodid;
                 delete param.ecomm_pagetype;
                 delete param.ecomm_totalvalue;
+                delete param.non_interaction;
                 if(name === 'search') {
                     param['search'] = param.search_term;
                     delete param.search_term;
+                    delete param.non_interaction;
                     delete param.dynx_itemid;
                     delete param.dynx_pagetype;
                     delete param.dynx_totalvalue;
@@ -3266,6 +3165,7 @@ if (!String.prototype.trim) {
                         let params = {
                             event_category: "Key Actions",
                             event_action: name,
+                            non_interaction: param.non_interaction,
                         }
                         if(param.hasOwnProperty("target_url")) {
                             params['event_label'] = param.target_url
@@ -3285,6 +3185,7 @@ if (!String.prototype.trim) {
                         let params = {
                             event_category: "Key Actions",
                             event_action: name,
+                              non_interaction: param.non_interaction,
                         }
                         return params;
                     }
@@ -3292,6 +3193,7 @@ if (!String.prototype.trim) {
                         let params = {
                             event_category: "Key Actions",
                             event_action: name,
+                              non_interaction: param.non_interaction,
                         }
                         var formClass = (typeof param.form_class != 'undefined') ? 'class: ' + param.form_class : '';
                         if(formClass != "") {
@@ -3304,6 +3206,7 @@ if (!String.prototype.trim) {
                             event_category: "Key Actions",
                             event_action: name,
                             event_label: param.download_name,
+                              non_interaction: param.non_interaction,
                         }
                         return params;
                     }
@@ -3313,6 +3216,7 @@ if (!String.prototype.trim) {
                             event_category: "Key Actions",
                             event_action: name,
                             event_label: document.title,
+                              non_interaction: param.non_interaction,
                         }
                         return params;
                     }
@@ -3321,6 +3225,7 @@ if (!String.prototype.trim) {
                             event_category: "Key Actions",
                             event_action: name,
                             event_label: param.search_term,
+                              non_interaction: param.non_interaction,
                         }
                         return params;
                     }
@@ -3397,6 +3302,8 @@ if (!String.prototype.trim) {
                 }
 
                 var config = {
+                    'link_attribution': options.ga.enhanceLinkAttr,
+                    'anonymize_ip': options.ga.anonimizeIP,
                     'custom_map': cd
                 };
 
@@ -3433,6 +3340,9 @@ if (!String.prototype.trim) {
                         delete config.debug_mode;
                     }
                     if(isv4(trackingId)) {
+                        if(options.ga.disableAdvertisingFeatures) {
+                            config.allow_google_signals = false
+                        }
                         if(options.ga.disableAdvertisingPersonalization) {
                             config.allow_ad_personalization_signals = false
                         }
@@ -3731,6 +3641,7 @@ if (!String.prototype.trim) {
          * @link: https://developers.google.com/gtagjs/reference/parameter
          */
         function fireEvent(name, data) {
+
             if(typeof window.pys_event_data_filter === "function" && window.pys_disable_event_filter(event_name,'google_ads')) {
                 return;
             }
@@ -3738,7 +3649,6 @@ if (!String.prototype.trim) {
             var ids = data.ids.filter(function (pixelId) {
                 return !Utils.hideMatchingPixel(pixelId, 'google_ads');
             });
-
             var coversionIds = data.hasOwnProperty('conversion_ids') ? data.conversion_ids.filter(function (conversion_id) {
                 return !Utils.hideMatchingPixel(conversion_id, 'google_ads');
             }) : [];
@@ -3762,49 +3672,27 @@ if (!String.prototype.trim) {
                 if (options.debug) {
                     console.log('[Google Ads #' + conversion_id + '] ' + event_name, params);
                 }
+
                 gtag('event', event_name, params);
 
-
             };
-            if (conversion_labels.length > 0) {
-                ids = conversion_labels;
-                if(!isTrackEventForGA.includes(name)){
-                    _fireEvent(ids, name);
+
+            if(conversion_labels.length > 0) {  // if custom event have conversion_label
+                conversion_labels.forEach(function (conversion_id) {
+                    _fireEvent(conversion_id,name);
+                });
+            } else { // if normal event have conversion_label or custom without conversion_label
+
+                coversionIds.forEach(function (conversion_id) { // send main event
+                    _fireEvent(conversion_id,name);
+                });
+
+                if (ids.length) {
+                    ids.forEach(function (conversion_id) {  // send conversion event next to main(not use for custom events)
+                        _fireEvent(conversion_id,"conversion");
+                    });
                 }
             }
-            else {
-
-                if (name == 'purchase') {
-                    if(ids.length && options.google_ads.woo_purchase_conversion_track && options.google_ads.woo_purchase_conversion_track == 'conversion')
-                    {
-                        _fireEvent(ids, "conversion");
-                    }
-                    if (ids.length && options.google_ads.woo_purchase_conversion_track && options.google_ads.woo_purchase_conversion_track == 'purchase') {
-                        ids = ids;
-                    } else {
-                        ids = coversionIds
-                    }
-                }
-                else if (name == 'begin_checkout') {
-                    if(ids.length && options.google_ads[data.e_id + '_conversion_track'] && options.google_ads[data.e_id + '_conversion_track'] == 'conversion')
-                    {
-
-                        _fireEvent(ids, "conversion");
-                    }
-                    if (ids.length && options.google_ads[data.e_id + '_conversion_track'] && options.google_ads[data.e_id + '_conversion_track'] == 'initiate_checkout') {
-                        ids = ids;
-                    } else {
-                        ids = coversionIds
-                    }
-                }else {
-                    ids = coversionIds;
-                }
-                if(!isTrackEventForGA.includes(name)){
-                    _fireEvent(ids, name);
-                }
-            }
-
-
         }
 
         function normalizeEventName(eventName) {
@@ -5426,9 +5314,7 @@ if (!String.prototype.trim) {
 
 
 }(jQuery, pysOptions);
-
-if (pysOptions.ajaxForServerEvent && !Cookies.get('pbid') && !(pysOptions.cookie.disabled_all_cookie || pysOptions.cookie.externalID_disabled_by_api)) {
-
+if (pysOptions.ajaxForServerEvent && !Cookies.get('pbid')) {
     jQuery.ajax({
         url: pysOptions.ajaxUrl,
         dataType: 'json',
@@ -5439,6 +5325,12 @@ if (pysOptions.ajaxForServerEvent && !Cookies.get('pbid') && !(pysOptions.cookie
             if (res.data && res.data.pbid != false && pysOptions.send_external_id) {
                 var expires = parseInt(pysOptions.external_id_expire || 180);
                 Cookies.set('pbid', res.data.pbid, { expires: expires, path: '/' });
+                if(pysOptions.hasOwnProperty('facebook')) {
+                    pysOptions.facebook.advancedMatching.external_id = res.data.pbid;
+                }
+                if(pysOptions.hasOwnProperty('tiktok')){
+                    pysOptions.tiktok.advanced_matching.external_id = res.data.pbid;
+                }
             }
         }
     });

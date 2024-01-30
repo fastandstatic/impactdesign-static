@@ -221,32 +221,3 @@ span.impact-button-text {
 #shirt:before {
 
 }/* End custom CSS */
-/* Start Custom Fonts CSS */@font-face {
-	font-family: 'Gilroy';
-	font-style: normal;
-	font-weight: normal;
-	font-display: auto;
-	src: url('/wp-content/uploads/2024/01/Gilroy-Regular.ttf') format('truetype');
-}
-@font-face {
-	font-family: 'Gilroy';
-	font-style: normal;
-	font-weight: 900;
-	font-display: auto;
-	src: url('/wp-content/uploads/2024/01/Gilroy-Black.ttf') format('truetype');
-}
-@font-face {
-	font-family: 'Gilroy';
-	font-style: normal;
-	font-weight: 600;
-	font-display: auto;
-	src: url('/wp-content/uploads/2024/01/Gilroy-SemiBold.ttf') format('truetype');
-}
-@font-face {
-	font-family: 'Gilroy';
-	font-style: normal;
-	font-weight: 700;
-	font-display: auto;
-	src: url('/wp-content/uploads/2024/01/Gilroy-Bold.ttf') format('truetype');
-}
-/* End Custom Fonts CSS */
