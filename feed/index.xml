@@ -8,11 +8,11 @@
 	>
 
 <channel>
-	<title>Impact Design</title>
+	<title>Impact Designs</title>
 	<atom:link href="/feed/" rel="self" type="application/rss+xml" />
 	<link>/</link>
 	<description></description>
-	<lastBuildDate>Wed, 13 Mar 2024 15:41:21 +0000</lastBuildDate>
+	<lastBuildDate>Wed, 13 Mar 2024 19:30:25 +0000</lastBuildDate>
 	<language>es</language>
 	<sy:updatePeriod>
 	hourly	</sy:updatePeriod>
@@ -22,7 +22,7 @@
 
 <image>
 	<url>/wp-content/uploads/2024/01/impactfavicon.png</url>
-	<title>Impact Design</title>
+	<title>Impact Designs</title>
 	<link>/</link>
 	<width>32</width>
 	<height>32</height>
